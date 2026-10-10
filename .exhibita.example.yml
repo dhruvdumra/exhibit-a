@@ -1,0 +1,30 @@
+# ExhibitA policy file. Copy to .exhibita.yml in the folder you scan. All keys optional.
+
+# Which scanners to run (default: all four).
+scanners: [semgrep, gitleaks, hadolint, checkov]
+
+# Glob paths whose findings are ignored.
+ignore:
+  - "tests/*"
+  - "vendor/*"
+
+# Minimum severity a proven finding must reach to fail the build gate.
+gate_severity: critical
+
+# Language for AI explanations (en, te, hi, es, fr, ...). Code fixes stay in English.
+lang: en
+
+# Apply each fix to a copy and re-scan to confirm it resolves the finding.
+fix_check: true
+
+verify:
+  # Declare HTTP entry points so proofs work on any framework (not just Flask,
+  # which ExhibitA can locate automatically). `match` is a vulnerability class
+  # (sql_injection, command_injection, path_traversal, ssti, xss, xxe) or a rule id.
+  routes:
+    - match: sql_injection
+      path: /api/users
+      param: id
+    - match: xxe
+      path: /api/import
+      # body-based endpoints need no param
