@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.exhibita_cache/
+*.sarif
+.env
+.claude/settings.local.json
+# Semgrep registry rules are separately licensed — never commit a downloaded cache.
+.semgrep/
+semgrep-rules-cache/

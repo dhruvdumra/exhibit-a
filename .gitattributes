@@ -1,0 +1,6 @@
+# Force LF everywhere so scripts and line numbers stay consistent on Linux CI runners.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
