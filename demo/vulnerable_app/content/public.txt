@@ -1,0 +1,1 @@
+PUBLIC_FILE_OK: this file under content/ is safe to serve.

@@ -1,0 +1,30 @@
+# Intentionally insecure Kubernetes manifest for the demo. DO NOT DEPLOY.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulnerable-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vulnerable-app
+  template:
+    metadata:
+      labels:
+        app: vulnerable-app
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: app
+          image: vulnerable-app:latest
+          ports:
+            - containerPort: 8000
+          securityContext:
+            privileged: true
+            runAsNonRoot: false
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false
+          env:
+            - name: API_TOKEN
+              value: "f3b9c2a1d4e5061728394a5b6c7d8e9f0a1b2c3d4e5f6071"

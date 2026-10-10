@@ -1,0 +1,15 @@
+# Intentionally insecure workflow for the demo. DO NOT COPY.
+name: deploy
+on: [push]
+
+permissions: write-all
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/setup-python@v5
+      - run: |
+          curl http://example.com/install.sh | bash
+          echo "deploying"
