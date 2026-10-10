@@ -1,0 +1,224 @@
+rules:
+  - id: exhibita-sql-injection
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >-
+      SQL injection: untrusted HTTP input flows into a SQL string passed to
+      execute(). Build the query with placeholders and pass values as parameters.
+    metadata:
+      exhibita_severity: critical
+      cwe: "CWE-89: SQL Injection"
+      category: security
+    pattern-sources:
+      - pattern: flask.request.args.get(...)
+      - pattern: request.args.get(...)
+      - pattern: request.args[...]
+      - pattern: flask.request.form.get(...)
+      - pattern: request.form.get(...)
+      - pattern: request.values.get(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $CURSOR.execute($QUERY, ...)
+              - pattern: $CURSOR.execute($QUERY)
+              - pattern: $CURSOR.executescript($QUERY)
+          - focus-metavariable: $QUERY
+
+  - id: exhibita-command-injection
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >-
+      Command injection: untrusted HTTP input flows into a shell command. Pass the
+      command as an argument list without shell=True instead of building a string.
+    metadata:
+      exhibita_severity: critical
+      cwe: "CWE-78: OS Command Injection"
+      category: security
+    pattern-sources:
+      - pattern: flask.request.args.get(...)
+      - pattern: request.args.get(...)
+      - pattern: request.args[...]
+      - pattern: flask.request.form.get(...)
+      - pattern: request.form.get(...)
+      - pattern: request.values.get(...)
+    pattern-sinks:
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+      - pattern: subprocess.getoutput(...)
+      - pattern: subprocess.getstatusoutput(...)
+      - patterns:
+          - pattern-either:
+              - pattern: subprocess.call(...)
+              - pattern: subprocess.run(...)
+              - pattern: subprocess.Popen(...)
+              - pattern: subprocess.check_output(...)
+          - pattern: $F(..., shell=True, ...)
+
+  - id: exhibita-flask-debug
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Flask is run with debug=True. The Werkzeug debugger allows arbitrary code
+      execution via the interactive console. Never enable it outside local dev.
+    metadata:
+      exhibita_severity: high
+      cwe: "CWE-489: Active Debug Code"
+      category: security
+    pattern: $APP.run(..., debug=True, ...)
+
+  - id: exhibita-weak-hash
+    languages: [python]
+    severity: WARNING
+    message: >-
+      MD5 is cryptographically broken and must not be used for passwords or
+      integrity. Use hashlib.sha256 or a password hasher like bcrypt/argon2.
+    metadata:
+      exhibita_severity: medium
+      cwe: "CWE-327: Use of a Broken Cryptographic Algorithm"
+      category: security
+    pattern-either:
+      - pattern: hashlib.md5(...)
+      - pattern: hashlib.sha1(...)
+
+  - id: exhibita-dangerous-eval
+    languages: [python]
+    severity: ERROR
+    message: >-
+      eval()/exec() on a non-constant value can execute arbitrary code. Parse the
+      input explicitly (e.g. ast.literal_eval, int()) instead.
+    metadata:
+      exhibita_severity: high
+      cwe: "CWE-95: Eval Injection"
+      category: security
+    patterns:
+      - pattern-either:
+          - pattern: eval($X)
+          - pattern: exec($X)
+      - pattern-not: eval("...")
+      - pattern-not: exec("...")
+
+  - id: exhibita-insecure-yaml-load
+    languages: [python]
+    severity: WARNING
+    message: >-
+      yaml.load without a SafeLoader can construct arbitrary Python objects. Use
+      yaml.safe_load instead.
+    metadata:
+      exhibita_severity: medium
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      category: security
+    patterns:
+      - pattern: yaml.load($X)
+      - pattern-not: yaml.load($X, Loader=yaml.SafeLoader)
+      - pattern-not: yaml.load($X, yaml.SafeLoader)
+
+  - id: exhibita-ssrf-requests
+    languages: [python]
+    severity: WARNING
+    message: >-
+      A request is made to a URL built from user input (possible SSRF). Validate
+      the host against an allowlist before fetching.
+    metadata:
+      exhibita_severity: high
+      cwe: "CWE-918: Server-Side Request Forgery"
+      category: security
+    patterns:
+      - pattern-either:
+          - pattern: requests.get($URL, ...)
+          - pattern: requests.get($URL)
+          - pattern: urllib.request.urlopen($URL)
+      - pattern-not: requests.get("...", ...)
+      - pattern-not: requests.get("...")
+      - pattern-not: urllib.request.urlopen("...")
+
+  - id: exhibita-path-traversal
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >-
+      Path traversal: untrusted HTTP input flows into a file path opened by the app.
+      Constrain the name to a safe directory (e.g. os.path.basename or werkzeug safe_join).
+    metadata:
+      exhibita_severity: critical
+      cwe: "CWE-22: Path Traversal"
+      category: security
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.args[...]
+      - pattern: request.values.get(...)
+      - pattern: flask.request.args.get(...)
+    pattern-sinks:
+      - patterns:
+          - pattern: open($P, ...)
+          - focus-metavariable: $P
+      - patterns:
+          - pattern: open($P)
+          - focus-metavariable: $P
+
+  - id: exhibita-template-injection
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >-
+      Server-side template injection: untrusted HTTP input is built into a template
+      source. Render a fixed template and pass the input as a variable instead.
+    metadata:
+      exhibita_severity: critical
+      cwe: "CWE-1336: Server-Side Template Injection"
+      category: security
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.args[...]
+      - pattern: request.values.get(...)
+      - pattern: flask.request.args.get(...)
+    pattern-sinks:
+      - pattern: render_template_string(...)
+      - pattern: flask.render_template_string(...)
+
+  - id: exhibita-reflected-xss
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >-
+      Reflected XSS: untrusted HTTP input is returned as HTML without escaping.
+      Escape the value (markupsafe.escape) or render it through an autoescaping template.
+    metadata:
+      exhibita_severity: high
+      cwe: "CWE-79: Cross-Site Scripting"
+      category: security
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.args[...]
+      - pattern: request.values.get(...)
+      - pattern: flask.request.args.get(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: Response(...)
+              - pattern: flask.Response(...)
+              - pattern: make_response(...)
+              - pattern: flask.make_response(...)
+
+  - id: exhibita-xxe
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >-
+      XXE: untrusted XML is parsed with external entity resolution enabled. Disable
+      entity resolution (resolve_entities=False) or use defusedxml.
+    metadata:
+      exhibita_severity: critical
+      cwe: "CWE-611: XML External Entity"
+      category: security
+    pattern-sources:
+      - pattern: request.get_data(...)
+      - pattern: request.data
+      - pattern: request.stream.read(...)
+      - pattern: flask.request.get_data(...)
+    pattern-sinks:
+      - pattern: etree.fromstring(...)
+      - pattern: etree.parse(...)
+      - pattern: etree.XML(...)
+      - pattern: lxml.etree.fromstring(...)
