@@ -1,0 +1,42 @@
+[
+  {
+    "code": "DL3007",
+    "column": 1,
+    "file": "-",
+    "level": "warning",
+    "line": 2,
+    "message": "Using latest is prone to errors if the image will ever update. Pin the version explicitly to a release tag"
+  },
+  {
+    "code": "DL3064",
+    "column": 1,
+    "file": "-",
+    "level": "warning",
+    "line": 4,
+    "message": "Potentially sensitive data should not be used in the `ARG` or `ENV` commands"
+  },
+  {
+    "code": "DL3013",
+    "column": 1,
+    "file": "-",
+    "level": "warning",
+    "line": 9,
+    "message": "Pin versions in pip. Instead of `pip install <package>` use `pip install <package>==<version>` or `pip install --requirement <requirements file>`"
+  },
+  {
+    "code": "DL3042",
+    "column": 1,
+    "file": "-",
+    "level": "warning",
+    "line": 9,
+    "message": "Avoid use of cache directory with pip. Use `pip install --no-cache-dir <package>`"
+  },
+  {
+    "code": "DL3025",
+    "column": 1,
+    "file": "-",
+    "level": "warning",
+    "line": 13,
+    "message": "Use arguments JSON notation for CMD and ENTRYPOINT arguments"
+  }
+]

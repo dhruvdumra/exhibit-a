@@ -1,0 +1,221 @@
+{
+  "results": [
+    {
+      "check_id": "rules.exhibita-sql-injection",
+      "path": "/src/app.py",
+      "start": {
+        "line": 52,
+        "col": 25,
+        "offset": 1882
+      },
+      "end": {
+        "line": 52,
+        "col": 30,
+        "offset": 1887
+      },
+      "extra": {
+        "message": "SQL injection: untrusted HTTP input flows into a SQL string passed to execute(). Build the query with placeholders and pass values as parameters.",
+        "severity": "ERROR",
+        "metadata": {
+          "exhibita_severity": "critical",
+          "cwe": "CWE-89: SQL Injection",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-command-injection",
+      "path": "/src/app.py",
+      "start": {
+        "line": 60,
+        "col": 16,
+        "offset": 2140
+      },
+      "end": {
+        "line": 60,
+        "col": 59,
+        "offset": 2183
+      },
+      "extra": {
+        "message": "Command injection: untrusted HTTP input flows into a shell command. Pass the command as an argument list without shell=True instead of building a string.",
+        "severity": "ERROR",
+        "metadata": {
+          "exhibita_severity": "critical",
+          "cwe": "CWE-78: OS Command Injection",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-path-traversal",
+      "path": "/src/app.py",
+      "start": {
+        "line": 68,
+        "col": 15,
+        "offset": 2413
+      },
+      "end": {
+        "line": 68,
+        "col": 46,
+        "offset": 2444
+      },
+      "extra": {
+        "message": "Path traversal: untrusted HTTP input flows into a file path opened by the app. Constrain the name to a safe directory (e.g. os.path.basename or werkzeug safe_join).",
+        "severity": "ERROR",
+        "metadata": {
+          "exhibita_severity": "critical",
+          "cwe": "CWE-22: Path Traversal",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-reflected-xss",
+      "path": "/src/app.py",
+      "start": {
+        "line": 69,
+        "col": 16,
+        "offset": 2504
+      },
+      "end": {
+        "line": 69,
+        "col": 58,
+        "offset": 2546
+      },
+      "extra": {
+        "message": "Reflected XSS: untrusted HTTP input is returned as HTML without escaping. Escape the value (markupsafe.escape) or render it through an autoescaping template.",
+        "severity": "ERROR",
+        "metadata": {
+          "exhibita_severity": "high",
+          "cwe": "CWE-79: Cross-Site Scripting",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-template-injection",
+      "path": "/src/app.py",
+      "start": {
+        "line": 76,
+        "col": 12,
+        "offset": 2724
+      },
+      "end": {
+        "line": 76,
+        "col": 65,
+        "offset": 2777
+      },
+      "extra": {
+        "message": "Server-side template injection: untrusted HTTP input is built into a template source. Render a fixed template and pass the input as a variable instead.",
+        "severity": "ERROR",
+        "metadata": {
+          "exhibita_severity": "critical",
+          "cwe": "CWE-1336: Server-Side Template Injection",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-reflected-xss",
+      "path": "/src/app.py",
+      "start": {
+        "line": 83,
+        "col": 12,
+        "offset": 2938
+      },
+      "end": {
+        "line": 83,
+        "col": 74,
+        "offset": 3000
+      },
+      "extra": {
+        "message": "Reflected XSS: untrusted HTTP input is returned as HTML without escaping. Escape the value (markupsafe.escape) or render it through an autoescaping template.",
+        "severity": "ERROR",
+        "metadata": {
+          "exhibita_severity": "high",
+          "cwe": "CWE-79: Cross-Site Scripting",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-xxe",
+      "path": "/src/app.py",
+      "start": {
+        "line": 91,
+        "col": 12,
+        "offset": 3246
+      },
+      "end": {
+        "line": 91,
+        "col": 42,
+        "offset": 3276
+      },
+      "extra": {
+        "message": "XXE: untrusted XML is parsed with external entity resolution enabled. Disable entity resolution (resolve_entities=False) or use defusedxml.",
+        "severity": "ERROR",
+        "metadata": {
+          "exhibita_severity": "critical",
+          "cwe": "CWE-611: XML External Entity",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-weak-hash",
+      "path": "/src/app.py",
+      "start": {
+        "line": 99,
+        "col": 29,
+        "offset": 3540
+      },
+      "end": {
+        "line": 99,
+        "col": 55,
+        "offset": 3566
+      },
+      "extra": {
+        "message": "MD5 is cryptographically broken and must not be used for passwords or integrity. Use hashlib.sha256 or a password hasher like bcrypt/argon2.",
+        "severity": "WARNING",
+        "metadata": {
+          "exhibita_severity": "medium",
+          "cwe": "CWE-327: Use of a Broken Cryptographic Algorithm",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "rules.exhibita-flask-debug",
+      "path": "/src/app.py",
+      "start": {
+        "line": 109,
+        "col": 5,
+        "offset": 3765
+      },
+      "end": {
+        "line": 109,
+        "col": 51,
+        "offset": 3811
+      },
+      "extra": {
+        "message": "Flask is run with debug=True. The Werkzeug debugger allows arbitrary code execution via the interactive console. Never enable it outside local dev.",
+        "severity": "WARNING",
+        "metadata": {
+          "exhibita_severity": "high",
+          "cwe": "CWE-489: Active Debug Code",
+          "category": "security"
+        },
+        "lines": "requires login"
+      }
+    }
+  ],
+  "errors": []
+}

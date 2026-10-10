@@ -1,0 +1,16 @@
+[
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "File": "/src/Dockerfile",
+    "StartLine": 4,
+    "Match": "API_TOKEN=REDACTED"
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+    "File": "/src/config.py",
+    "StartLine": 6,
+    "Match": "API_TOKEN = \"REDACTED\""
+  }
+]
