@@ -1,0 +1,30 @@
+name: ExhibitA security review
+
+# Open the demo PR from a branch in this repo (not a fork) so the Gemini secret loads.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write      # post the review with one-click fixes
+  security-events: write    # upload SARIF to the Security tab
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need history so we can diff against the PR base
+
+      - name: ExhibitA
+        uses: ./
+        with:
+          path: demo/vulnerable_app
+          backend: gemini
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          verify: "true"
+          comment: "true"
+          # On a PR, scope triage/proof to changed files; empty on manual runs = full scan.
+          changed-base: ${{ github.event.pull_request.base.sha }}
