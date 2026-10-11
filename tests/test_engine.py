@@ -150,20 +150,23 @@ def test_attack_chains_need_two_findings():
     assert be.calls == 0
 
 
-def test_attack_chains_parsed_and_mermaid_validated():
+def test_attack_chains_build_valid_mermaid_from_steps():
     from exhibita.core.engine import attack_chains
     payload = json.dumps({"chains": [
         {"title": "SQLi to file read", "narrative": "chain them",
-         "mermaid": "flowchart TD\n  A[SQLi] --> B[read files]"},
-        {"title": "bad graph", "narrative": "n", "mermaid": "this is not mermaid"},
+         "steps": ["app.py:52 SQLi", "read files", "RCE"]},
+        {"title": "too short", "narrative": "n", "steps": ["only one step"]},
     ]})
     chains = attack_chains([_real("exhibita-sql-injection", "sqli"),
                             _real("exhibita-path-traversal", "path_traversal")], FakeBackend([payload]))
-    assert [c.title for c in chains] == ["SQLi to file read"]  # invalid mermaid dropped
+    assert [c.title for c in chains] == ["SQLi to file read"]  # one-step chain dropped
     assert chains[0].mermaid.startswith("flowchart TD")
+    assert 'N0["app.py:52 SQLi"]' in chains[0].mermaid and "-->" in chains[0].mermaid
 
 
-def test_attack_chains_strip_code_fences():
-    from exhibita.core.engine import _clean_mermaid
-    assert _clean_mermaid("```mermaid\nflowchart TD\n A-->B\n```").startswith("flowchart TD")
-    assert _clean_mermaid("not a graph") is None
+def test_mermaid_from_steps_sanitizes_and_requires_two():
+    from exhibita.core.engine import _mermaid_from_steps
+    assert _mermaid_from_steps(["only one"]) is None
+    m = _mermaid_from_steps(['a "x" [y]', "b"])
+    assert m.startswith("flowchart TD")
+    assert "(y)" in m and "'x'" in m  # brackets and quotes sanitized

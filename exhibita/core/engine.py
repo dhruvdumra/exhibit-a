@@ -179,6 +179,10 @@ def _parse(raw: str, finding: Finding) -> AIFinding | None:
     except ValidationError:
         return None
     ai.finding = finding
+    # Models often give a fix but omit the line range; default it to the flagged line
+    # so the fix can still be applied and verified (a single-line replacement).
+    if ai.suggested_fix and ai.fix_start_line is None and finding.line > 0:
+        ai.fix_start_line = ai.fix_end_line = finding.line
     return ai
 
 
@@ -230,9 +234,10 @@ describe each path.
 Rules:
 - Return ONLY a JSON object matching the schema. No prose, no markdown fences.
 - chains: 1 to 3 paths. Only link findings that plausibly combine; do not force it.
-- Each chain has: a short title, a 1-2 sentence narrative, and a `mermaid` graph.
-- mermaid MUST be a valid Mermaid flowchart starting with "flowchart TD", with short
-  node labels in square brackets and --> edges. Reference the findings by file.
+- Each chain has: a short title, a 1-2 sentence narrative, and `steps` — an ordered
+  list of 2 to 5 short node labels describing the attacker's path (for example the
+  entry finding, then the impact). Keep each label under ~6 words. ExhibitA draws the
+  graph itself, so give plain labels, not Mermaid syntax.
 """
 
 _CHAIN_SCHEMA = {
@@ -240,21 +245,31 @@ _CHAIN_SCHEMA = {
     "properties": {"chains": {"type": "array", "items": {
         "type": "object",
         "properties": {"title": {"type": "string"}, "narrative": {"type": "string"},
-                       "mermaid": {"type": "string"}},
-        "required": ["title", "narrative", "mermaid"]}}},
+                       "steps": {"type": "array", "items": {"type": "string"}}},
+        "required": ["title", "narrative", "steps"]}}},
     "required": ["chains"],
 }
 
 
-def _clean_mermaid(text: str) -> str | None:
-    """Return a valid Mermaid flowchart body, or None if it can't be salvaged."""
-    s = (text or "").strip()
-    if s.startswith("```"):
-        s = re.sub(r"^```[a-zA-Z]*\n?", "", s).removesuffix("```").strip()
-    head = s.split("\n", 1)[0].strip().lower()
-    if not (head.startswith("graph ") or head.startswith("flowchart ")):
+def _mermaid_from_steps(steps: list) -> str | None:
+    """Build a guaranteed-valid Mermaid flowchart from step labels.
+
+    We generate the node IDs and quote the labels ourselves, so special characters
+    like ':' or '/' in a label can't break GitHub's Mermaid parser.
+    """
+    labels = []
+    for s in steps or []:
+        if not isinstance(s, str):
+            continue
+        label = s.replace('"', "'").replace("[", "(").replace("]", ")").strip()[:48]
+        if label:
+            labels.append(label)
+        if len(labels) >= 5:
+            break
+    if len(labels) < 2:
         return None
-    return s
+    chain = " --> ".join(f'N{i}["{label}"]' for i, label in enumerate(labels))
+    return "flowchart TD\n    " + chain
 
 
 def attack_chains(ai_findings: list[AIFinding], backend: LLMBackend) -> list[AttackChain]:
@@ -277,7 +292,7 @@ def attack_chains(ai_findings: list[AIFinding], backend: LLMBackend) -> list[Att
         return []
     out = []
     for c in data.get("chains", []):
-        mermaid = _clean_mermaid(c.get("mermaid", ""))
+        mermaid = _mermaid_from_steps(c.get("steps", []))
         if mermaid and c.get("title"):
             out.append(AttackChain(title=c["title"], narrative=c.get("narrative", ""), mermaid=mermaid))
     return out
