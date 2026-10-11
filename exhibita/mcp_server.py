@@ -10,7 +10,6 @@ Run with:  python -m exhibita.mcp_server   (stdio transport)
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
@@ -36,7 +35,7 @@ server = MCPServer(
 
 
 def _backend(name: str | None):
-    return get_backend(name or os.environ.get("MODEL_BACKEND", "ollama"))
+    return get_backend(name)  # None → auto: local model if present, else the API key
 
 
 def _finding_dict(ai, verification=None) -> dict:
