@@ -13,8 +13,12 @@ memory/pid limits. It keeps a network namespace only so its port can be reached.
 from __future__ import annotations
 
 import hashlib
+import os
+import platform
 import re
+import shutil
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -25,6 +29,81 @@ _TARGET_LIMITS = [
     "--memory=768m", "--pids-limit=512", "--cap-drop", "ALL",
     "--security-opt", "no-new-privileges",
 ]
+
+DEFAULT_SANDBOX_IMAGE = "exhibita-sandbox:latest"
+# The sandbox recipe travels with the package (embedded, not a repo file), so a
+# `pip install exhibita` user can run the full proof without cloning anything —
+# the image is built automatically on first use.
+SANDBOX_DOCKERFILE = """FROM python:3.12-slim
+RUN pip install --no-cache-dir flask==3.1.3 lxml==5.3.0
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+WORKDIR /app
+"""
+
+INSTALL_HINT = {
+    "Windows": "Install Docker Desktop: https://docs.docker.com/desktop/install/windows-install/",
+    "Darwin": "Install Docker Desktop: https://docs.docker.com/desktop/install/mac-install/",
+    "Linux": "Install Docker Engine: https://docs.docker.com/engine/install/",
+}
+
+
+def docker_running() -> bool:
+    try:
+        r = subprocess.run(["docker", "info", "--format", "{{.ServerVersion}}"],
+                           capture_output=True, timeout=30)
+        return r.returncode == 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def docker_installed() -> bool:
+    return shutil.which("docker") is not None
+
+
+def image_exists(image: str) -> bool:
+    try:
+        r = subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=30)
+        return r.returncode == 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def ensure_sandbox_image(image: str = DEFAULT_SANDBOX_IMAGE, timeout: int = 600) -> bool:
+    """Build the generic sandbox image from the embedded recipe if it's missing."""
+    if image_exists(image):
+        return True
+    with tempfile.TemporaryDirectory(prefix="exhibita-sandbox-") as d:
+        (Path(d) / "Dockerfile").write_text(SANDBOX_DOCKERFILE, encoding="utf-8")
+        r = subprocess.run(["docker", "build", "-q", "-t", image, d],
+                           capture_output=True, text=True, timeout=timeout)
+        return r.returncode == 0
+
+
+def start_docker_desktop() -> bool:
+    """Best-effort launch of an already-installed Docker Desktop (never installs it)."""
+    system = platform.system()
+    try:
+        if system == "Windows":
+            for base in (os.environ.get("ProgramFiles", ""), os.environ.get("ProgramW6432", "")):
+                exe = Path(base) / "Docker" / "Docker" / "Docker Desktop.exe"
+                if base and exe.exists():
+                    subprocess.Popen([str(exe)])
+                    return True
+        elif system == "Darwin":
+            subprocess.Popen(["open", "-a", "Docker"])
+            return True
+    except Exception:  # noqa: BLE001
+        return False
+    return False
+
+
+def wait_for_docker(timeout: float = 90.0) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if docker_running():
+            return True
+        time.sleep(2)
+    return False
 
 
 def has_dockerfile(app_dir: str | Path) -> bool:

@@ -59,7 +59,7 @@ def scan(
     scanner: list[str] = typer.Option(None, "--scanner", "-s", help="Limit to these scanners."),
     explain: bool = typer.Option(True, "--explain/--no-explain", help="Run Gemma 4 triage on findings."),
     verify: bool = typer.Option(False, "--verify", help="Prove critical findings in the sandbox."),
-    backend: str = typer.Option(None, "--backend", "-b", help="ollama | gemini (default: $MODEL_BACKEND or ollama)."),
+    backend: str = typer.Option(None, "--backend", "-b", help="auto | ollama | gemini (default: auto — local model, else API key)."),
     lang: str = typer.Option("en", "--lang", "-l", help="Language for explanations (en, te, hi, ...)."),
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignore the response cache."),
     sarif: str = typer.Option(None, "--sarif", help="Write SARIF results to this path."),
@@ -80,6 +80,60 @@ def verify_cmd(
 ):
     """Scan, triage, and prove critical findings end-to-end in the sandbox."""
     _pipeline(path, None, True, True, backend, lang, no_cache)
+
+
+@app.command()
+def doctor(
+    install: bool = typer.Option(False, "--install", help="Open the official Docker installer for your OS if Docker is missing."),
+):
+    """Check the environment (Docker + a model) and start Docker if it's installed."""
+    import os as _os
+    import platform as _platform
+    import webbrowser
+    from .backends import OllamaBackend
+    from .core import runtime as rt
+
+    ok = True
+    console.print("[bold]ExhibitA environment check[/]\n")
+    if rt.docker_running():
+        console.print("[green]OK[/]  Docker is running")
+    elif rt.docker_installed():
+        console.print("[yellow]..[/] Docker is installed but not running — starting it")
+        rt.start_docker_desktop()
+        if rt.wait_for_docker():
+            console.print("[green]OK[/]  Docker started")
+        else:
+            ok = False
+            console.print("[red]X[/]  Docker did not start — open Docker Desktop manually")
+    else:
+        ok = False
+        hint = rt.INSTALL_HINT.get(_platform.system(), rt.INSTALL_HINT["Linux"])
+        console.print(f"[red]X[/]  Docker not installed. {hint}")
+        url = hint.split(": ", 1)[-1]
+        if install:
+            console.print(f"[dim]Opening the official Docker installer: {url}[/]")
+            try:
+                webbrowser.open(url)
+            except Exception:  # noqa: BLE001
+                pass
+            console.print("[dim]Install Docker, start it, then re-run `exhibita doctor`.[/]")
+        else:
+            console.print("[dim]Re-run with `exhibita doctor --install` to open the official installer.[/]")
+
+    ready, detail = OllamaBackend().available()
+    if ready:
+        console.print(f"[green]OK[/]  Local model — {detail}")
+    elif _os.environ.get("GEMINI_API_KEY"):
+        console.print("[green]OK[/]  Cloud model — GEMINI_API_KEY is set")
+    else:
+        ok = False
+        console.print("[red]X[/]  No model. Run `ollama pull gemma4:e4b` (offline) or set GEMINI_API_KEY (cloud)")
+
+    if ok:
+        console.print("\n[bold green]Ready.[/] Try: exhibita verify demo/vulnerable_app")
+    else:
+        console.print("\n[bold red]Not ready[/] — fix the items marked X above.")
+        raise typer.Exit(1)
 
 
 @app.command("threat-model")

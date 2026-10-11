@@ -61,10 +61,9 @@ def runtime_ready(app_dir: str | Path) -> tuple[bool, str]:
     """Whether a target can be run: via its own Dockerfile, or the sandbox image."""
     if runtime.has_dockerfile(app_dir):
         return True, "runs the target via its own Dockerfile"
-    if sandbox_available():
-        return True, "runs the target via the exhibita-sandbox image"
-    return False, ("target has no Dockerfile and the sandbox image is missing; "
-                   "run: docker build -t exhibita-sandbox:latest sandbox/")
+    if sandbox_available() or runtime.docker_running():
+        return True, "runs the target via the exhibita-sandbox image (auto-built if missing)"
+    return False, "Docker is not running — start Docker Desktop and retry"
 
 
 def _find_entry(app_dir: Path, finding_file: str) -> str:
@@ -83,6 +82,8 @@ def _runtime_spec(app_dir: Path, finding_file: str, prebuilt_image: str | None) 
     if runtime.has_dockerfile(app_dir):
         image = prebuilt_image or runtime.build_target_image(app_dir)
         return RuntimeSpec(image, runtime._exposed_port(app_dir), "/app", None)
+    if not runtime.ensure_sandbox_image(SANDBOX_IMAGE):
+        raise RuntimeError("could not build the exhibita-sandbox image (is Docker running?)")
     entry = _find_entry(app_dir, finding_file)
     launcher = (f"import {entry} as m; "
                 "m.app.run(host='0.0.0.0', port=8000, use_reloader=False, threaded=True)")
