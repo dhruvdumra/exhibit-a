@@ -24,27 +24,27 @@ still behaves.
 
 > **Every finding comes with evidence.**
 
-It runs three ways from one core — a **CLI**, a **GitHub Action**, and an **Agent
-Skill** — against either the cloud Gemini API or a fully offline local model.
+It runs four ways from one core — a **CLI**, a **GitHub Action**, an **MCP server**,
+and an **Agent Skill** — against either the cloud Gemini API or a fully offline
+local model.
 
 ## How it works
 
-```
- your code / pull request
-        │
- 1. SCAN     Semgrep · Gitleaks · Hadolint · Checkov   (Docker, no network)
-        │
- 2. TRIAGE   Gemma 4 explains each finding, filters false positives, suggests a fix
-        │
- 3. PROVE    for critical bugs: run the app in a sandbox and confirm the exploit,
-        │    apply the fix, confirm it's blocked, confirm the app still works
-        │
- 4. REPORT   terminal · SARIF (Security tab) · PR comments with one-click fixes
-        │
- 5. GATE     fail the build only on a *proven* critical — no proof, no block
+```mermaid
+flowchart TD
+    IF["Interfaces: CLI · GitHub Action · MCP · Agent Skill"] --> SCAN
+    subgraph SCAN["1 · Scan — Docker, offline"]
+      direction LR
+      S1[Semgrep] ~~~ S2[Gitleaks] ~~~ S3[Hadolint] ~~~ S4[Checkov]
+    end
+    SCAN -->|"Finding[ ]"| TRI["2 · Triage — Gemma 4 (Ollama / Gemini)<br/>explain · filter false positives · suggest fix"]
+    TRI -->|"AIFinding[ ]"| PROVE["3 · Prove — sandbox, no network<br/>exploit → patch → blocked → still works"]
+    PROVE -->|"Verification"| REP["4 · Report & gate<br/>SARIF · PR one-click fixes · pass or fail"]
 ```
 
-The proof uses the same black-box techniques a DAST scanner uses — a boolean
+Four scanners find the suspects; Gemma 4 explains and filters them; the sandbox
+proves the critical ones; the report gates the build. The proof uses the same
+black-box techniques a DAST scanner uses — a boolean
 true/false difference, a `/etc/passwd` read, a timing delay, an evaluated
 expression, an unescaped reflection — so it confirms the bug on real apps, not
 just a crafted demo. The target runs through **its own Dockerfile** when it has
@@ -70,21 +70,46 @@ issues (Hadolint); **Kubernetes / Terraform / GitHub Actions** misconfig (Checko
 | Blocks a merge only *with proof* | ❌ | ❌ | ✅ |
 | Runs offline on an open model | ❌ | partial | ✅ |
 
-## Quickstart
+## Tech stack
+
+| Layer | What we use |
+|---|---|
+| Language | Python 3.12 |
+| CLI / types / HTTP | Typer · Pydantic v2 (validated data at every step) · httpx · Rich |
+| Scanners | Semgrep · Gitleaks · Hadolint · Checkov (run as official Docker images) |
+| AI | **Gemma 4** — Ollama (`gemma4:e4b`, 4-bit, offline) or the Gemini API (`gemma-4-31b-it`), behind one interface |
+| Sandbox | Docker — the target's own Dockerfile, or an auto-built `exhibita-sandbox` image |
+| Agents | Model Context Protocol server + an Agent Skill |
+| CI | GitHub composite Action · SARIF upload · inline PR suggestions |
+| Config / tests | `.exhibita.yml` (PyYAML) · pytest |
+
+No web framework, no database, no agent framework — a deterministic, typed pipeline.
+
+## Install the CLI
 
 ```bash
+pip install exhibita                     # once published to PyPI
+# — or from source —
+git clone https://github.com/dhruvdumra/exhibit-a.git
+cd exhibit-a
 pip install -e .
-docker build -t exhibita-sandbox:latest sandbox/     # for self-contained apps
-
-# offline: install Ollama, then
-ollama pull gemma4:e4b
-
-exhibita scan demo/vulnerable_app                     # scan + AI triage
-exhibita verify demo/vulnerable_app                   # scan + triage + sandbox proof
 ```
 
-Pick a backend with `MODEL_BACKEND=ollama` (offline) or `MODEL_BACKEND=gemini`
-(set `GEMINI_API_KEY`). Switch explanation language with `--lang te`.
+**Prerequisites:** Docker running, and **one** model source —
+- *offline:* install [Ollama](https://ollama.com), then `ollama pull gemma4:e4b`, or
+- *cloud:* set `GEMINI_API_KEY`.
+
+Then:
+
+```bash
+exhibita doctor                          # checks Docker + model; starts Docker if installed
+exhibita scan   demo/vulnerable_app      # scan + AI triage
+exhibita verify demo/vulnerable_app      # scan + triage + sandbox proof (the headline)
+```
+
+No flags needed: the backend auto-selects (local model if present, else the API key),
+and the sandbox image builds itself on first `verify`. Force a backend with
+`--backend ollama|gemini`; switch explanation language with `--lang te`.
 
 <a name="offline"></a>**Offline isn't the fallback — it's the fast path.** With
 `gemma4:e4b` on a laptop GPU the whole review runs with the Wi-Fi off; nothing
@@ -130,7 +155,7 @@ Those are the roadmap, not claims.
 
 ```bash
 pip install -e ".[dev]"
-pytest                      # 56 unit tests; 3 Docker integration tests when Docker is up
+pytest                      # 80+ unit tests; 3 Docker integration tests when Docker is up
 python scripts/capture_fixtures.py   # refresh scanner fixtures from the demo app
 ```
 
