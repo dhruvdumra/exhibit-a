@@ -48,7 +48,7 @@ def notes():
     owner = request.args.get("owner", "alice")
     conn = db()
     # BUG (SQL injection): user input formatted straight into the query.
-    query = "SELECT owner, body FROM notes WHERE owner = '%s'" % owner
+    query = "SELECT owner, body FROM notes WHERE owner = '%s'" % owner # hi lol
     rows = conn.execute(query).fetchall()
     return jsonify([{"owner": o, "body": b} for o, b in rows])
 
